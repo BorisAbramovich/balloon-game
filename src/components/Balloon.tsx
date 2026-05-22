@@ -66,7 +66,7 @@ export const Balloon: React.FC<BalloonProps> = ({
         className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-center px-2 pointer-events-none drop-shadow-md transition-all leading-tight ${
           (isSelected || hovered) ? "opacity-100 scale-110" : "opacity-90"
         }`}
-        style={{ fontSize: radius * 0.25, maxWidth: radius * 1.6 }}
+        style={{ fontSize: radius * 0.5, maxWidth: radius * 1.6 }}
       >
         {activity.title}
       </div>
