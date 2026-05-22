@@ -1,0 +1,25 @@
+{
+  "name": "balloon-game",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "bun --hot ./index.ts",
+    "start": "bun ./index.ts"
+  },
+  "dependencies": {
+    "@uiw/react-markdown-preview": "^5.0.0",
+    "@uiw/react-md-editor": "^3.25.6",
+    "framer-motion": "^11.0.0",
+    "marked": "^18.0.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.4.5"
+  }
+}

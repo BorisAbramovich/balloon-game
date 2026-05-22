@@ -1,0 +1,70 @@
+/* Tailwind is loaded via CDN in index.html. */
+
+/* ---- Clouds ---- */
+@keyframes cloud-drift {
+  from { transform: translateX(var(--cloud-start)); }
+  to   { transform: translateX(var(--cloud-end)); }
+}
+
+.cloud {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  animation: cloud-drift var(--cloud-duration) linear infinite;
+  will-change: transform;
+}
+
+.cloud-shape {
+  background: white;
+  border-radius: 9999px;
+  position: relative;
+}
+
+.cloud-shape::before,
+.cloud-shape::after {
+  content: "";
+  position: absolute;
+  background: white;
+  border-radius: 9999px;
+}
+
+.cloud-shape::before {
+  width: 50%;
+  height: 130%;
+  top: -40%;
+  left: 18%;
+}
+
+.cloud-shape::after {
+  width: 40%;
+  height: 110%;
+  top: -25%;
+  right: 18%;
+}
+
+/* Rendered markdown styling for mission content */
+.mission-content h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; color: #1e293b; }
+.mission-content h2 { font-size: 1.25rem; font-weight: 700; margin: 0.5rem 0; color: #1e293b; }
+.mission-content h3 { font-size: 1.1rem;  font-weight: 700; margin: 0.4rem 0; color: #334155; }
+.mission-content p  { margin: 0.4rem 0; }
+.mission-content ul { list-style: disc;    padding-inline-start: 1.5rem; margin: 0.4rem 0; }
+.mission-content ol { list-style: decimal; padding-inline-start: 1.5rem; margin: 0.4rem 0; }
+.mission-content li { margin: 0.15rem 0; }
+.mission-content strong { font-weight: 700; color: #1e293b; }
+.mission-content em { font-style: italic; }
+.mission-content blockquote {
+  border-inline-start: 4px solid #cbd5e1;
+  padding-inline-start: 0.75rem;
+  color: #475569;
+  margin: 0.5rem 0;
+  font-style: italic;
+}
+.mission-content code {
+  background: #e2e8f0;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+.mission-content a { color: #2563eb; text-decoration: underline; }
+.mission-content hr { border-color: #e2e8f0; margin: 0.75rem 0; }
