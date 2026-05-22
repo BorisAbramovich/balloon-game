@@ -4,16 +4,28 @@ import "./styles.css";
 import { GamePage } from "./pages/GamePage";
 import { AdminPage } from "./pages/AdminPage";
 import { useActivityStore } from "./store/activityStore";
+import { usePresetStore } from "./store/presetStore";
 
 function App() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"game" | "admin">("game");
 
   useEffect(() => {
-    // Simulate a small load to ensure store has settled
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
+    Promise.all([
+      useActivityStore.getState().fetchActivities(),
+      usePresetStore.getState().fetchPresets(),
+      usePresetStore.getState().fetchActivePreset(),
+    ]).then(() => setLoading(false));
   }, []);
+
+  // Re-fetch server data when switching back to game view
+  useEffect(() => {
+    if (view === "game" && !loading) {
+      useActivityStore.getState().fetchActivities();
+      usePresetStore.getState().fetchPresets();
+      usePresetStore.getState().fetchActivePreset();
+    }
+  }, [view]);
 
   if (loading) {
     return (
@@ -28,8 +40,8 @@ function App() {
   return (
     <div className={`h-screen w-screen overflow-hidden transition-colors ${view === 'game' ? 'bg-sky-200' : 'bg-slate-100'}`}>
       <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center p-4">
-        <div className="px-4 py-1 text-lg font-bold bg-white/30 rounded-full">
-          Balloon Missions
+        <div className="px-4 py-1 text-4xl font-bold bg-white/30 rounded-full">
+          בלוני משימות
         </div>
         <button
           onClick={() => setView(view === "game" ? "admin" : "game")}

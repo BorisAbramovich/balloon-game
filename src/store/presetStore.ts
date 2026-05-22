@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export type Preset = {
   id: string;
@@ -10,37 +9,59 @@ export type Preset = {
 type PresetStore = {
   presets: Preset[];
   activePresetId: string | null;
-  addPreset: (name: string, activityIds: string[]) => void;
-  updatePreset: (preset: Preset) => void;
-  removePreset: (id: string) => void;
-  setActivePreset: (id: string | null) => void;
+  fetchPresets: () => Promise<void>;
+  fetchActivePreset: () => Promise<void>;
+  addPreset: (name: string, activityIds: string[]) => Promise<void>;
+  updatePreset: (preset: Preset) => Promise<void>;
+  removePreset: (id: string) => Promise<void>;
+  setActivePreset: (id: string | null) => Promise<void>;
 };
 
-export const usePresetStore = create<PresetStore>()(
-  persist(
-    (set) => ({
-      presets: [],
-      activePresetId: null,
-      addPreset: (name, activityIds) =>
-        set((state) => ({
-          presets: [
-            ...state.presets,
-            { id: crypto.randomUUID(), name, activityIds },
-          ],
-        })),
-      updatePreset: (updated) =>
-        set((state) => ({
-          presets: state.presets.map((p) =>
-            p.id === updated.id ? updated : p
-          ),
-        })),
-      removePreset: (id) =>
-        set((state) => ({
-          presets: state.presets.filter((p) => p.id !== id),
-          activePresetId: state.activePresetId === id ? null : state.activePresetId,
-        })),
-      setActivePreset: (id) => set({ activePresetId: id }),
-    }),
-    { name: "balloon-preset-store" }
-  )
-);
+export const usePresetStore = create<PresetStore>()((set) => ({
+  presets: [],
+  activePresetId: null,
+  fetchPresets: async () => {
+    const res = await fetch("/api/presets");
+    const presets = await res.json();
+    set({ presets });
+  },
+  fetchActivePreset: async () => {
+    const res = await fetch("/api/presets/active");
+    const { activePresetId } = await res.json();
+    set({ activePresetId });
+  },
+  addPreset: async (name, activityIds) => {
+    const res = await fetch("/api/presets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, activityIds }),
+    });
+    const created = await res.json();
+    set((s) => ({ presets: [...s.presets, created] }));
+  },
+  updatePreset: async (preset) => {
+    await fetch(`/api/presets/${preset.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: preset.name, activityIds: preset.activityIds }),
+    });
+    set((s) => ({
+      presets: s.presets.map((p) => (p.id === preset.id ? preset : p)),
+    }));
+  },
+  removePreset: async (id) => {
+    await fetch(`/api/presets/${id}`, { method: "DELETE" });
+    set((s) => ({
+      presets: s.presets.filter((p) => p.id !== id),
+      activePresetId: s.activePresetId === id ? null : s.activePresetId,
+    }));
+  },
+  setActivePreset: async (id) => {
+    await fetch("/api/presets/active", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activePresetId: id }),
+    });
+    set({ activePresetId: id });
+  },
+}));

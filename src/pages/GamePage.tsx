@@ -37,7 +37,7 @@ export const GamePage: React.FC = () => {
   const completedIds = useProgressStore((s) => s.completedIds);
   const presets = usePresetStore((s) => s.presets);
   const activePresetId = usePresetStore((s) => s.activePresetId);
-  const setActivePreset = usePresetStore((s) => s.setActivePreset);
+
 
   const activePreset = presets.find((p) => p.id === activePresetId);
   const activities = useMemo(
@@ -47,11 +47,26 @@ export const GamePage: React.FC = () => {
     [allActivities, activePresetId]
   );
 
-  const [presetMenuOpen, setPresetMenuOpen] = useState(false);
   
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [, setTick] = useState(0);
   const clouds = useMemo(() => generateClouds(10), []);
+
+  const completedCount = completedIds.filter((id) => activities.some((a) => a.id === id)).length;
+  const allDone = activities.length > 0 && completedCount === activities.length;
+
+  const confettiPieces = useMemo(() => {
+    const colors = ["#F87171", "#FBBF24", "#4ADE80", "#60A5FA", "#C084FC", "#F472B6", "#FB923C", "#A78BFA"];
+    return Array.from({ length: 40 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      color: colors[i % colors.length],
+      delay: Math.random() * 2,
+      duration: 2 + Math.random() * 2,
+      size: 6 + Math.random() * 10,
+      rotation: Math.random() * 360,
+    }));
+  }, []);
   
   const gameDataRef = useRef({
     positions: new Map<string, { x: number; y: number }>(),
@@ -84,7 +99,7 @@ export const GamePage: React.FC = () => {
     // Aim: balloons take up a reasonable fraction of the screen
     const sizeByScreen = minDim / 9;          // ~36px on a 320px phone, ~107px on 1080p
     const sizeByCount  = minDim / Math.sqrt(n * 4); // shrink as more balloons appear
-    return Math.round(Math.max(28, Math.min(100, sizeByScreen, sizeByCount)));
+    return Math.round(Math.max(36, Math.min(130, sizeByScreen, sizeByCount) * 1.3));
   };
 
   useEffect(() => {
@@ -157,7 +172,7 @@ export const GamePage: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-sky-200" onClick={() => presetMenuOpen && setPresetMenuOpen(false)}>
+    <div className="relative w-full h-full overflow-hidden bg-sky-200">
       {clouds.map((c) => (
         <div
           key={c.id}
@@ -178,42 +193,10 @@ export const GamePage: React.FC = () => {
         </div>
       ))}
 
-      <div className="absolute top-20 sm:top-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
-        {presets.length > 0 && (
-          <div className="relative">
-            <button
-              onClick={() => setPresetMenuOpen(!presetMenuOpen)}
-              className="bg-white/80 backdrop-blur px-4 py-2 sm:px-5 sm:py-3 rounded-full shadow-lg border border-white/60 text-sm sm:text-base font-bold text-slate-600 hover:bg-white transition-all whitespace-nowrap"
-            >
-              {activePreset ? activePreset.name : "All"}
-              <span className="ml-1 text-xs">&#9662;</span>
-            </button>
-            {presetMenuOpen && (
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-xl border border-slate-200 py-1 min-w-[160px] z-50">
-                <button
-                  onClick={() => { setActivePreset(null); setPresetMenuOpen(false); }}
-                  className={`w-full text-right px-4 py-2 text-sm hover:bg-sky-50 transition-colors ${!activePresetId ? "font-bold text-blue-600" : "text-slate-700"}`}
-                >
-                  All Activities
-                </button>
-                {presets.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setActivePreset(p.id); setPresetMenuOpen(false); }}
-                    className={`w-full text-right px-4 py-2 text-sm hover:bg-sky-50 transition-colors ${activePresetId === p.id ? "font-bold text-blue-600" : "text-slate-700"}`}
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="bg-white/80 backdrop-blur px-5 py-2 sm:px-8 sm:py-3 rounded-full shadow-lg border border-white/60 transition-all">
-          <span className="text-lg sm:text-2xl font-bold text-slate-700">
-            🎈 <span className="text-blue-600">{completedIds.filter((id) => activities.some((a) => a.id === id)).length}</span> / {activities.length}
-          </span>
-        </div>
+      <div className="absolute top-20 sm:top-6 left-1/2 -translate-x-1/2 z-40 bg-white/80 backdrop-blur px-5 py-2 sm:px-8 sm:py-3 rounded-full shadow-lg border border-white/60 transition-all">
+        <span className="text-lg sm:text-2xl font-bold text-slate-700">
+          🎈 <span className="text-blue-600">{completedCount}</span> / {activities.length}
+        </span>
       </div>
 
       {gameDataRef.current.positions.size > 0 ? (
@@ -263,6 +246,60 @@ export const GamePage: React.FC = () => {
             setSelectedId(null);
           }}
         />
+      )}
+
+      {allDone && (
+        <div className="splash-overlay fixed inset-0 z-50 bg-gradient-to-b from-sky-400/90 via-purple-400/90 to-pink-400/90 backdrop-blur-sm flex items-center justify-center">
+          {confettiPieces.map((p) => (
+            <div
+              key={p.id}
+              className="splash-confetti-piece"
+              style={{
+                left: p.left,
+                backgroundColor: p.color,
+                width: p.size,
+                height: p.size,
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.duration}s`,
+                animationIterationCount: "infinite",
+                borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+                transform: `rotate(${p.rotation}deg)`,
+              }}
+            />
+          ))}
+
+          <div className="splash-card absolute top-1/2 left-1/2 bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 sm:p-12 text-center max-w-md w-[90%]">
+            <div className="text-6xl sm:text-8xl mb-4">
+              🎉
+            </div>
+            <h1 className="splash-title text-4xl sm:text-5xl font-black mb-3" dir="auto">
+              כל הכבוד!
+            </h1>
+            <p className="text-lg sm:text-xl text-slate-600 mb-2" dir="auto">
+              השלמתם את כל המשימות!
+            </p>
+            <div className="flex justify-center gap-2 my-4">
+              {["🌟", "⭐", "🌟", "⭐", "🌟"].map((star, i) => (
+                <span
+                  key={i}
+                  className="text-3xl sm:text-4xl"
+                  style={{ animationDelay: `${0.3 + i * 0.15}s`, display: "inline-block" }}
+                >
+                  {star}
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                useProgressStore.getState().resetProgress();
+              }}
+              className="mt-4 px-8 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all"
+              dir="auto"
+            >
+              🔄 שחק שוב
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

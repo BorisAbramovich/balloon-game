@@ -68,3 +68,68 @@
 }
 .mission-content a { color: #2563eb; text-decoration: underline; }
 .mission-content hr { border-color: #e2e8f0; margin: 0.75rem 0; }
+
+/* ---- Finish Splash ---- */
+@keyframes splash-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes splash-scale-up {
+  0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  60%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+@keyframes splash-star {
+  0%   { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(180deg); opacity: 0; }
+}
+
+@keyframes splash-confetti {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(calc(100vh + 20px)) rotate(720deg); opacity: 0.6; }
+}
+
+@keyframes splash-rainbow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes splash-bounce {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.05); }
+}
+
+.splash-overlay {
+  animation: splash-fade-in 0.5s ease-out forwards;
+}
+
+.splash-card {
+  animation: splash-scale-up 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             splash-bounce 2s ease-in-out 1s infinite;
+}
+
+.splash-star {
+  animation: splash-star 1.5s ease-out forwards;
+}
+
+.splash-confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: splash-confetti linear forwards;
+}
+
+.splash-title {
+  background: linear-gradient(270deg, #F87171, #FBBF24, #4ADE80, #60A5FA, #C084FC, #F87171);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: splash-rainbow 3s ease infinite;
+}

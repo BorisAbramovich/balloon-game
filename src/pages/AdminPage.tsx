@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useActivityStore, Activity } from "../store/activityStore";
-import { useProgressStore } from "../store/progressStore";
 import { usePresetStore, Preset } from "../store/presetStore";
 import { MdEditor } from "../components/MdEditor";
 
@@ -9,8 +8,6 @@ export const AdminPage: React.FC = () => {
   const addActivity = useActivityStore((s) => s.addActivity);
   const removeActivity = useActivityStore((s) => s.removeActivity);
   const updateActivity = useActivityStore((s) => s.updateActivity);
-  const resetProgress = useProgressStore((s) => s.resetProgress);
-
   const presets = usePresetStore((s) => s.presets);
   const activePresetId = usePresetStore((s) => s.activePresetId);
   const addPreset = usePresetStore((s) => s.addPreset);
@@ -57,18 +54,14 @@ export const AdminPage: React.FC = () => {
 
   const handleDeleteAll = () => {
     if (confirmClear) {
-      localStorage.removeItem("balloon-activities");
-      localStorage.removeItem("balloon-progress");
-      window.location.reload();
+      // Delete all activities from server
+      Promise.all(activities.map((a) => removeActivity(a.id))).then(() => {
+        window.location.reload();
+      });
     } else {
       setConfirmClear(true);
       setTimeout(() => setConfirmClear(false), 3000);
     }
-  };
-
-  const handleResetProgress = () => {
-    resetProgress();
-    alert("Progress has been reset!");
   };
 
   return (
@@ -77,12 +70,6 @@ export const AdminPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Activities Editor</h1>
           <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={handleResetProgress}
-              className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold py-2 px-4 rounded-full transition-all"
-            >
-              Reset Score
-            </button>
             <button
               onClick={() => { setIsAdding(true); setEditingId("new"); }}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-md"
