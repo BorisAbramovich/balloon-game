@@ -6,3 +6,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: ADMIN_PIN
+        sync: false

@@ -3,10 +3,62 @@ import db from "./db";
 type Activity = { id: string; title: string; content: string; color: string };
 type Preset = { id: string; name: string; activityIds: string[] };
 
+const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
+const TOKEN_COOKIE = "admin_token";
+// Simple HMAC-like token: hash the PIN so we don't store it in the cookie
+const VALID_TOKEN = new Bun.CryptoHasher("sha256").update(`balloon-admin:${ADMIN_PIN}`).digest("hex");
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+function getCookie(req: Request, name: string): string | null {
+  const header = req.headers.get("cookie") || "";
+  const match = header.split(";").map(c => c.trim()).find(c => c.startsWith(`${name}=`));
+  return match ? match.split("=")[1] : null;
+}
+
+export function isAdmin(req: Request): boolean {
+  return getCookie(req, TOKEN_COOKIE) === VALID_TOKEN;
+}
+
+function unauthorized() {
+  return json({ error: "Unauthorized" }, 401);
+}
+
+export function requireAdmin(req: Request): Response | null {
+  if (!isAdmin(req)) return unauthorized();
+  return null;
+}
+
+export async function login(req: Request) {
+  const body = await req.json() as { pin: string };
+  if (body.pin !== ADMIN_PIN) {
+    return json({ error: "Wrong PIN" }, 403);
+  }
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Set-Cookie": `${TOKEN_COOKIE}=${VALID_TOKEN}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`,
+    },
+  });
+}
+
+export function checkAuth(req: Request) {
+  return json({ authenticated: isAdmin(req) });
+}
+
+export function logout() {
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Set-Cookie": `${TOKEN_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
+    },
   });
 }
 
