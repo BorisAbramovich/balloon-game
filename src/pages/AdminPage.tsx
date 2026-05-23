@@ -78,8 +78,10 @@ export const AdminPage: React.FC = () => {
 
   const handleSave = (content: string) => {
     if (isAdding || editingId === "new") {
-      const colors = ["#F87171", "#60A5FA", "#A3E635", "#C084FC", "#FBBF24", "#F472B6"];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      const colors = ["#F87171", "#60A5FA", "#A3E635", "#C084FC", "#FBBF24", "#F472B6", "#FB923C", "#2DD4BF", "#818CF8", "#F9A8D4"];
+      const usedColors = activities.map((a) => a.color);
+      const unused = colors.filter((c) => !usedColors.includes(c));
+      const randomColor = (unused.length > 0 ? unused : colors)[Math.floor(Math.random() * (unused.length > 0 ? unused : colors).length)];
       addActivity({
         title: tempTitle || "New Activity",
         content,
