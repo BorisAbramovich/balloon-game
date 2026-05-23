@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useActivityStore, Activity } from "../store/activityStore";
 import { usePresetStore, Preset } from "../store/presetStore";
 import { MdEditor } from "../components/MdEditor";
@@ -23,6 +23,40 @@ export const AdminPage: React.FC = () => {
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null);
   const [newPresetName, setNewPresetName] = useState("");
   const [newPresetIds, setNewPresetIds] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = async () => {
+    const res = await fetch("/api/backup");
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `balloon-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const res = await fetch("/api/backup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      await useActivityStore.getState().fetchActivities();
+      await usePresetStore.getState().fetchPresets();
+      await usePresetStore.getState().fetchActivePreset();
+      alert("Backup restored!");
+    } else {
+      alert("Import failed");
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   useEffect(() => {
     if (editingId === "new") {
@@ -70,6 +104,25 @@ export const AdminPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Activities Editor</h1>
           <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={handleExport}
+              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-2 px-4 rounded-full transition-all"
+            >
+              Export
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-2 px-4 rounded-full transition-all"
+            >
+              Import
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              className="hidden"
+            />
             <button
               onClick={() => { setIsAdding(true); setEditingId("new"); }}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-md"

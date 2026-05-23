@@ -4,10 +4,11 @@ import {
   getActivities, addActivity, updateActivity, deleteActivity,
   getPresets, addPreset, updatePreset, deletePreset,
   getActivePreset, setActivePreset,
+  exportData, importData,
   login, checkAuth, logout, requireAdmin,
 } from "./src/api";
 
-function guard(req: Request, handler: (req: Request) => Response | Promise<Response>) {
+function guard(req: Request, handler: (req: Request) => Promise<Response>) {
   const denied = requireAdmin(req);
   if (denied) return denied;
   return handler(req);
@@ -48,6 +49,11 @@ const server = serve({
     "/api/presets/:id": {
       PUT: (req) => guard(req, (r) => updatePreset(r, req.params.id)),
       DELETE: (req) => guard(req, () => deletePreset(req.params.id)),
+    },
+
+    "/api/backup": {
+      GET: (req) => { const d = requireAdmin(req); return d || exportData(); },
+      POST: (req) => guard(req, importData),
     },
   },
   development: process.env.NODE_ENV !== "production" ? {

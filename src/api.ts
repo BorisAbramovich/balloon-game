@@ -5,7 +5,6 @@ type Preset = { id: string; name: string; activityIds: string[] };
 
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
 const TOKEN_COOKIE = "admin_token";
-// Simple HMAC-like token: hash the PIN so we don't store it in the cookie
 const VALID_TOKEN = new Bun.CryptoHasher("sha256").update(`balloon-admin:${ADMIN_PIN}`).digest("hex");
 
 function json(data: unknown, status = 200) {
@@ -64,92 +63,181 @@ export function logout() {
 
 // ---- Activities ----
 
-export function getActivities() {
-  const rows = db.query("SELECT id, title, content, color FROM activities ORDER BY sort_order").all() as Activity[];
+export async function getActivities() {
+  const result = await db.execute("SELECT id, title, content, color FROM activities ORDER BY sort_order");
+  const rows = result.rows.map((r) => ({
+    id: r.id as string,
+    title: r.title as string,
+    content: r.content as string,
+    color: r.color as string,
+  }));
   return json(rows);
 }
 
 export async function addActivity(req: Request) {
   const body = await req.json() as Omit<Activity, "id">;
   const id = crypto.randomUUID();
-  const maxOrder = db.query("SELECT COALESCE(MAX(sort_order), 0) as m FROM activities").get() as { m: number };
-  db.run(
-    "INSERT INTO activities (id, title, content, color, sort_order) VALUES (?, ?, ?, ?, ?)",
-    [id, body.title, body.content, body.color, maxOrder.m + 1]
-  );
+  const maxResult = await db.execute("SELECT COALESCE(MAX(sort_order), 0) as m FROM activities");
+  const maxOrder = Number(maxResult.rows[0].m);
+  await db.execute({
+    sql: "INSERT INTO activities (id, title, content, color, sort_order) VALUES (?, ?, ?, ?, ?)",
+    args: [id, body.title, body.content, body.color, maxOrder + 1],
+  });
   return json({ id, ...body }, 201);
 }
 
 export async function updateActivity(req: Request, id: string) {
   const body = await req.json() as Partial<Activity>;
-  db.run(
-    "UPDATE activities SET title = COALESCE(?, title), content = COALESCE(?, content), color = COALESCE(?, color) WHERE id = ?",
-    [body.title ?? null, body.content ?? null, body.color ?? null, id]
-  );
+  await db.execute({
+    sql: "UPDATE activities SET title = COALESCE(?, title), content = COALESCE(?, content), color = COALESCE(?, color) WHERE id = ?",
+    args: [body.title ?? null, body.content ?? null, body.color ?? null, id],
+  });
   return json({ ok: true });
 }
 
-export function deleteActivity(id: string) {
-  db.run("DELETE FROM activities WHERE id = ?", [id]);
+export async function deleteActivity(id: string) {
+  await db.execute({ sql: "DELETE FROM activities WHERE id = ?", args: [id] });
   return json({ ok: true });
 }
 
 // ---- Presets ----
 
-export function getPresets() {
-  const presets = db.query("SELECT id, name FROM presets").all() as { id: string; name: string }[];
-  const result: Preset[] = presets.map((p) => {
-    const activityIds = (
-      db.query("SELECT activity_id FROM preset_activities WHERE preset_id = ?").all(p.id) as { activity_id: string }[]
-    ).map((r) => r.activity_id);
-    return { ...p, activityIds };
-  });
+export async function getPresets() {
+  const presetsResult = await db.execute("SELECT id, name FROM presets");
+  const result: Preset[] = [];
+  for (const p of presetsResult.rows) {
+    const paResult = await db.execute({
+      sql: "SELECT activity_id FROM preset_activities WHERE preset_id = ?",
+      args: [p.id as string],
+    });
+    result.push({
+      id: p.id as string,
+      name: p.name as string,
+      activityIds: paResult.rows.map((r) => r.activity_id as string),
+    });
+  }
   return json(result);
 }
 
 export async function addPreset(req: Request) {
   const body = await req.json() as { name: string; activityIds: string[] };
   const id = crypto.randomUUID();
-  db.run("INSERT INTO presets (id, name) VALUES (?, ?)", [id, body.name]);
-  const insert = db.prepare("INSERT INTO preset_activities (preset_id, activity_id) VALUES (?, ?)");
+  await db.execute({ sql: "INSERT INTO presets (id, name) VALUES (?, ?)", args: [id, body.name] });
   for (const aid of body.activityIds) {
-    insert.run(id, aid);
+    await db.execute({
+      sql: "INSERT INTO preset_activities (preset_id, activity_id) VALUES (?, ?)",
+      args: [id, aid],
+    });
   }
   return json({ id, ...body }, 201);
 }
 
 export async function updatePreset(req: Request, id: string) {
   const body = await req.json() as { name: string; activityIds: string[] };
-  db.run("UPDATE presets SET name = ? WHERE id = ?", [body.name, id]);
-  db.run("DELETE FROM preset_activities WHERE preset_id = ?", [id]);
-  const insert = db.prepare("INSERT INTO preset_activities (preset_id, activity_id) VALUES (?, ?)");
+  await db.execute({ sql: "UPDATE presets SET name = ? WHERE id = ?", args: [body.name, id] });
+  await db.execute({ sql: "DELETE FROM preset_activities WHERE preset_id = ?", args: [id] });
   for (const aid of body.activityIds) {
-    insert.run(id, aid);
+    await db.execute({
+      sql: "INSERT INTO preset_activities (preset_id, activity_id) VALUES (?, ?)",
+      args: [id, aid],
+    });
   }
   return json({ ok: true });
 }
 
-export function deletePreset(id: string) {
-  db.run("DELETE FROM presets WHERE id = ?", [id]);
+export async function deletePreset(id: string) {
+  await db.execute({ sql: "DELETE FROM presets WHERE id = ?", args: [id] });
   return json({ ok: true });
 }
 
 // ---- Active Preset ----
 
-export function getActivePreset() {
-  const row = db.query("SELECT value FROM settings WHERE key = 'active_preset_id'").get() as { value: string } | null;
+export async function getActivePreset() {
+  const result = await db.execute("SELECT value FROM settings WHERE key = 'active_preset_id'");
+  const row = result.rows[0];
   return json({ activePresetId: row?.value ?? null });
 }
 
 export async function setActivePreset(req: Request) {
   const body = await req.json() as { activePresetId: string | null };
   if (body.activePresetId === null) {
-    db.run("DELETE FROM settings WHERE key = 'active_preset_id'");
+    await db.execute("DELETE FROM settings WHERE key = 'active_preset_id'");
   } else {
-    db.run(
-      "INSERT INTO settings (key, value) VALUES ('active_preset_id', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-      [body.activePresetId, body.activePresetId]
-    );
+    await db.execute({
+      sql: "INSERT INTO settings (key, value) VALUES ('active_preset_id', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+      args: [body.activePresetId, body.activePresetId],
+    });
   }
+  return json({ ok: true });
+}
+
+// ---- Export / Import ----
+
+export async function exportData() {
+  const actResult = await db.execute("SELECT id, title, content, color, sort_order FROM activities ORDER BY sort_order");
+  const activities = actResult.rows.map((r) => ({
+    id: r.id, title: r.title, content: r.content, color: r.color, sort_order: r.sort_order,
+  }));
+
+  const presetsResult = await db.execute("SELECT id, name FROM presets");
+  const presets = [];
+  for (const p of presetsResult.rows) {
+    const paResult = await db.execute({
+      sql: "SELECT activity_id FROM preset_activities WHERE preset_id = ?",
+      args: [p.id as string],
+    });
+    presets.push({
+      id: p.id, name: p.name,
+      activityIds: paResult.rows.map((r) => r.activity_id as string),
+    });
+  }
+
+  const activeResult = await db.execute("SELECT value FROM settings WHERE key = 'active_preset_id'");
+  const activeRow = activeResult.rows[0];
+
+  return json({
+    activities,
+    presets,
+    activePresetId: activeRow?.value ?? null,
+  });
+}
+
+export async function importData(req: Request) {
+  const body = await req.json() as {
+    activities: { id: string; title: string; content: string; color: string; sort_order?: number }[];
+    presets: { id: string; name: string; activityIds: string[] }[];
+    activePresetId: string | null;
+  };
+
+  await db.execute("DELETE FROM preset_activities");
+  await db.execute("DELETE FROM presets");
+  await db.execute("DELETE FROM activities");
+  await db.execute("DELETE FROM settings WHERE key = 'active_preset_id'");
+
+  for (let i = 0; i < body.activities.length; i++) {
+    const a = body.activities[i];
+    await db.execute({
+      sql: "INSERT INTO activities (id, title, content, color, sort_order) VALUES (?, ?, ?, ?, ?)",
+      args: [a.id, a.title, a.content, a.color, a.sort_order ?? i],
+    });
+  }
+
+  for (const p of body.presets) {
+    await db.execute({ sql: "INSERT INTO presets (id, name) VALUES (?, ?)", args: [p.id, p.name] });
+    for (const aid of p.activityIds) {
+      await db.execute({
+        sql: "INSERT INTO preset_activities (preset_id, activity_id) VALUES (?, ?)",
+        args: [p.id, aid],
+      });
+    }
+  }
+
+  if (body.activePresetId) {
+    await db.execute({
+      sql: "INSERT INTO settings (key, value) VALUES ('active_preset_id', ?)",
+      args: [body.activePresetId],
+    });
+  }
+
   return json({ ok: true });
 }
