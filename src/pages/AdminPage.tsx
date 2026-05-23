@@ -25,6 +25,15 @@ export const AdminPage: React.FC = () => {
   const [newPresetIds, setNewPresetIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [dbStatus, setDbStatus] = useState<{ status: string; backend: string; activities?: number } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then(setDbStatus)
+      .catch(() => setDbStatus({ status: "error", backend: "unknown" }));
+  }, []);
+
   const handleExport = async () => {
     const res = await fetch("/api/backup");
     const data = await res.json();
@@ -101,6 +110,22 @@ export const AdminPage: React.FC = () => {
   return (
     <div className="h-full w-full bg-slate-100 overflow-y-auto px-6 pb-20 pt-24">
       <div className="max-w-2xl mx-auto">
+        {dbStatus && (
+          <div className={`mb-4 flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full w-fit ${
+            dbStatus.status === "ok"
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-red-100 text-red-700"
+          }`}>
+            <span className={`inline-block w-2.5 h-2.5 rounded-full ${
+              dbStatus.status === "ok" ? "bg-emerald-500" : "bg-red-500"
+            }`} />
+            {dbStatus.status === "ok"
+              ? `DB: ${dbStatus.backend === "turso" ? "Turso Cloud" : "Local SQLite"}`
+              : `DB Error (${dbStatus.backend})`
+            }
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Activities Editor</h1>
           <div className="flex gap-2 flex-wrap">

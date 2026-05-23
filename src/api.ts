@@ -61,6 +61,22 @@ export function logout() {
   });
 }
 
+// ---- Health ----
+
+export async function healthCheck() {
+  try {
+    const result = await db.execute("SELECT COUNT(*) as c FROM activities");
+    const count = Number(result.rows[0].c);
+    return json({
+      status: "ok",
+      backend: process.env.TURSO_URL ? "turso" : "local",
+      activities: count,
+    });
+  } catch (e: any) {
+    return json({ status: "error", error: e.message, backend: process.env.TURSO_URL ? "turso" : "local" }, 500);
+  }
+}
+
 // ---- Activities ----
 
 export async function getActivities() {

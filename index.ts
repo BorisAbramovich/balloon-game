@@ -5,7 +5,7 @@ import {
   getPresets, addPreset, updatePreset, deletePreset,
   getActivePreset, setActivePreset,
   exportData, importData,
-  login, checkAuth, logout, requireAdmin,
+  login, checkAuth, logout, requireAdmin, healthCheck,
 } from "./src/api";
 
 function guard(req: Request, handler: (req: Request) => Promise<Response>) {
@@ -18,6 +18,10 @@ const server = serve({
   port: parseInt(process.env.PORT || "3000"),
   routes: {
     "/": indexHtml,
+
+    "/api/health": {
+      GET: () => healthCheck(),
+    },
 
     "/api/auth/login": {
       POST: (req) => login(req),
