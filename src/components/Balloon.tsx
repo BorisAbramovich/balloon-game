@@ -22,6 +22,32 @@ export const Balloon: React.FC<BalloonProps> = ({
 }) => {
   const [hovered, setHovered] = React.useState(false);
 
+  const fontSize = React.useMemo(() => {
+    const baseSize = radius * 0.5;
+    const maxWidth = radius * 1.75;
+    const maxHeight = radius * 1.5;
+    const words = activity.title.split(/\s+/);
+    const longestWord = words.reduce((a, b) => a.length > b.length ? a : b, "");
+    // Approximate: each character is roughly 0.6em wide for bold text
+    const charWidth = 0.6;
+    let size = baseSize;
+    // Shrink for longest word
+    const wordWidth = longestWord.length * size * charWidth;
+    if (wordWidth > maxWidth) {
+      size = Math.max(8, size * (maxWidth / wordWidth));
+    }
+    // Shrink for vertical overflow: estimate line count and total height
+    const charsPerLine = Math.floor(maxWidth / (size * charWidth));
+    const totalChars = activity.title.replace(/\s+/g, " ").length;
+    const lineCount = Math.ceil(totalChars / Math.max(1, charsPerLine));
+    const lineHeight = size * 1.2; // matches leading-tight
+    const totalHeight = lineCount * lineHeight;
+    if (totalHeight > maxHeight) {
+      size = Math.max(8, size * (maxHeight / totalHeight));
+    }
+    return size;
+  }, [activity.title, radius]);
+
   return (
     <motion.div
       className="absolute flex items-center justify-center cursor-pointer select-none"
@@ -66,7 +92,7 @@ export const Balloon: React.FC<BalloonProps> = ({
         className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-center px-2 pointer-events-none drop-shadow-md transition-all leading-tight ${
           (isSelected || hovered) ? "opacity-100 scale-110" : "opacity-90"
         }`}
-        style={{ fontSize: radius * 0.5, maxWidth: radius * 1.6 }}
+        style={{ fontSize, maxWidth: radius * 1.75 }}
       >
         {activity.title}
       </div>
